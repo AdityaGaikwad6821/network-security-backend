@@ -1,5 +1,12 @@
 from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Image,
+    Table,
+    TableStyle
+)
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.enums import TA_CENTER
@@ -12,8 +19,13 @@ def generate_audit_pdf(
     findings,
     suggestions,
     qr_file,
-    output_file="security_audit_report.pdf"
+    output_file
 ):
+    """
+    Generate a complete Network Security Audit PDF
+    using the actual audit results.
+    """
+
     doc = SimpleDocTemplate(
         output_file,
         pagesize=A4,
@@ -30,39 +42,82 @@ def generate_audit_pdf(
 
     story = []
 
-    # Title
-    story.append(Paragraph("Network Security Audit Report", title_style))
-    story.append(Spacer(1, 20))
+    # =====================================================
+    # TITLE
+    # =====================================================
 
-    # Basic Information
-    story.append(Paragraph("<b>Basic Information</b>", styles["Heading2"]))
-    story.append(Paragraph(f"Audit ID: {audit_id}", styles["Normal"]))
-    story.append(Paragraph(f"Vendor: {vendor}", styles["Normal"]))
-    story.append(Spacer(1, 15))
-
-    # Security Score
-    story.append(Paragraph("<b>Security Score</b>", styles["Heading2"]))
     story.append(
         Paragraph(
-            f"Overall Security Score: <b>{security_score}/100</b>",
-            styles["Normal"]
+            "Network Security Audit Report",
+            title_style
         )
     )
-    story.append(Spacer(1, 15))
 
-    # Findings
-    story.append(Paragraph("<b>Security Findings</b>", styles["Heading2"]))
+    story.append(Spacer(1, 20))
+
+    # =====================================================
+    # BASIC INFORMATION
+    # =====================================================
+
+    story.append(
+        Paragraph(
+            "Basic Information",
+            styles["Heading2"]
+        )
+    )
+
+    basic_info = [
+        ["Audit ID", audit_id],
+        ["Vendor", vendor],
+        ["Security Score", f"{security_score}/100"]
+    ]
+
+    info_table = Table(
+        basic_info,
+        colWidths=[150, 300]
+    )
+
+    info_table.setStyle(
+        TableStyle([
+            ("GRID", (0, 0), (-1, -1), 0.5, colors.black),
+            ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+            ("PADDING", (0, 0), (-1, -1), 7),
+        ])
+    )
+
+    story.append(info_table)
+
+    story.append(Spacer(1, 20))
+
+    # =====================================================
+    # SECURITY FINDINGS
+    # =====================================================
+
+    story.append(
+        Paragraph(
+            "Security Findings",
+            styles["Heading2"]
+        )
+    )
 
     if findings:
-        table_data = [["Issue", "Severity"]]
 
-        for finding in findings:
-            table_data.append([
-                finding["issue"],
-                finding["severity"]
+        finding_table = [
+            ["#", "Security Issue", "Severity"]
+        ]
+
+        for index, finding in enumerate(findings, start=1):
+
+            finding_table.append([
+                str(index),
+                finding.get("issue", "Unknown issue"),
+                finding.get("severity", "Unknown")
             ])
 
-        table = Table(table_data, colWidths=[350, 100])
+        table = Table(
+            finding_table,
+            colWidths=[35, 315, 100]
+        )
 
         table.setStyle(
             TableStyle([
@@ -77,30 +132,74 @@ def generate_audit_pdf(
         story.append(table)
 
     else:
+
         story.append(
-            Paragraph("No security issues found.", styles["Normal"])
-        )
-
-    story.append(Spacer(1, 15))
-
-    # Suggestions
-    story.append(Paragraph("<b>Suggestions / Remediation</b>", styles["Heading2"]))
-
-    for suggestion in suggestions:
-        story.append(
-            Paragraph(f"• {suggestion}", styles["Normal"])
+            Paragraph(
+                "No security issues were detected.",
+                styles["Normal"]
+            )
         )
 
     story.append(Spacer(1, 20))
 
-    # QR Code
-    story.append(Paragraph("<b>Audit Verification QR</b>", styles["Heading2"]))
+    # =====================================================
+    # SUGGESTIONS / REMEDIATION
+    # =====================================================
+
+    story.append(
+        Paragraph(
+            "Suggestions / Remediation",
+            styles["Heading2"]
+        )
+    )
+
+    if suggestions:
+
+        for suggestion in suggestions:
+
+            story.append(
+                Paragraph(
+                    f"• {suggestion}",
+                    styles["Normal"]
+                )
+            )
+
+            story.append(Spacer(1, 5))
+
+    else:
+
+        story.append(
+            Paragraph(
+                "No remediation suggestions available.",
+                styles["Normal"]
+            )
+        )
+
+    story.append(Spacer(1, 20))
+
+    # =====================================================
+    # QR CODE
+    # =====================================================
+
+    story.append(
+        Paragraph(
+            "Audit Verification QR",
+            styles["Heading2"]
+        )
+    )
+
     story.append(Spacer(1, 10))
 
-    qr_image = Image(qr_file, width=150, height=150)
+    qr_image = Image(
+        qr_file,
+        width=150,
+        height=150
+    )
+
     story.append(qr_image)
 
     story.append(Spacer(1, 10))
+
     story.append(
         Paragraph(
             f"Scan this QR code to identify audit {audit_id}.",
@@ -108,12 +207,22 @@ def generate_audit_pdf(
         )
     )
 
+    # =====================================================
+    # GENERATE PDF
+    # =====================================================
+
     doc.build(story)
 
     return output_file
 
 
+# =========================================================
+# TEST
+# =========================================================
+
 if __name__ == "__main__":
+
+    audit_id = "AUDIT-2026-0001"
 
     findings = [
         {
@@ -132,17 +241,18 @@ if __name__ == "__main__":
 
     suggestions = [
         "Disable Telnet and use SSH.",
-        "Enable proper system logging.",
+        "Enable system logging.",
         "Replace the default SNMP community string."
     ]
 
     pdf_file = generate_audit_pdf(
-        audit_id="AUDIT-2026-0001",
+        audit_id=audit_id,
         vendor="Cisco",
         security_score=65,
         findings=findings,
         suggestions=suggestions,
-        qr_file="AUDIT-2026-0001_qr.png"
+        qr_file="AUDIT-2026-0001_qr.png",
+        output_file="AUDIT-2026-0001_Report.pdf"
     )
 
     print(f"PDF generated successfully: {pdf_file}")

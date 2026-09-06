@@ -47,3 +47,24 @@ def get_current_user(user=Depends(verify_token)):
         "email": user.get("email"),
         "phone_number": user.get("phone_number")
     }
+from database import get_db_connection
+@app.get("/db-test")
+def test_database():
+    try:
+        db = get_db_connection()
+        cursor = db.cursor()
+        cursor.execute("SELECT DATABASE();")
+        result = cursor.fetchone()
+        cursor.close()
+        db.close()
+
+        return {
+            "message": "MySQL connection successful",
+            "database": result[0]
+        }
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
